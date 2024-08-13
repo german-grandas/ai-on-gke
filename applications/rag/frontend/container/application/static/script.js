@@ -278,11 +278,11 @@ function loadPreviousMessages() {
     .then((data) => {
       const { history_messages } = data;
       var chatEl = document.getElementById("chat");
-      history_messages.map(({ prompt, message }) => {
+      history_messages.map(({ sender, text }) => {
         var promptEl = Object.assign(document.createElement("p"), {
           classList: ["previous_message"],
         });
-        promptEl.textContent = `${prompt} : ${message}`;
+        promptEl.textContent = `${sender} : ${text}`;
         chatEl.appendChild(promptEl);
       });
     })

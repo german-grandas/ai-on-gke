@@ -108,7 +108,8 @@ def get_chat_history_endpoint():
 
         messages_response = []
         for message in history.messages:
-            data = {"prompt": message.type, "message": message.content}
+            message_id = str(uuid.uuid4())
+            data = {"sender": message.type, "text": message.content, "id" : message_id}
             messages_response.append(data)
 
         response = jsonify({"history_messages": messages_response})
@@ -152,20 +153,29 @@ def handlePrompt():
         session_id = session.get("session_id")
         if not session_id:
             return redirect(url_for("index"))
-        response = {}
+        
         result = take_chat_turn(llm_chain, session_id, user_prompt)
-        response["text"] = result
-
+        message_id = str(uuid.uuid4())
+        response = {
+            "id" : message_id,
+            "text" : result,
+            "sender" : "system"
+        }
         # TODO: enable filtering in chain
-        if "nlpFilterLevel" in data:
+        nlp_filter_level_enabled = data.get("nlpFilterLevelEnabled")
+        dlp_enabled = data.get("dlpEnabled")
+       
+        if nlp_filter_level_enabled:
+            nlp_filter_level = data.get("nlpFilterLevel")
             if nlp_filter.is_content_inappropriate(
-                response["text"], data["nlpFilterLevel"]
+                response["text"], nlp_filter_level
             ):
                 response["text"] = "The response is deemed inappropriate for display."
                 return {"response": response}
-        if "inspectTemplate" in data and "deidentifyTemplate" in data:
-            inspect_template_path = data["inspectTemplate"]
-            deidentify_template_path = data["deidentifyTemplate"]
+
+        if dlp_enabled:
+            inspect_template_path = data.get("inspectTemplate")
+            deidentify_template_path = data.get("deidentifyTemplate")
             if inspect_template_path != "" and deidentify_template_path != "":
                 # filter the output with inspect setting. Customer can pick any category from https://cloud.google.com/dlp/docs/concepts-infotypes
                 response["text"] = dlp_filter.inspect_content(
